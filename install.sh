@@ -9,6 +9,4 @@ bash "$SCRIPT_DIR/package/translate/build"
 
 echo "Installing plasmoid ..."
 kpackagetool6 -t Plasma/Applet --install "$SCRIPT_DIR/package"
-
-bash "$SCRIPT_DIR/iconinstall.sh"
 echo "Install complete."

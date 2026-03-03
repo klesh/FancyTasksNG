@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-03-04
+
+### Changed
+- **Unified Tooltip Design**: Grouped tasks now use a consistent, modern tooltip interface regardless of whether window thumbnails are enabled or disabled. 
+
+### Fixed
+- Resolved erratic Drag-and-Drop behavior over grouped tasks when thumbnails were disabled.
+- Fixed an issue where the applet's icon was missing (displaying as a blank sheet) in the Plasma Widget Explorer.
+- Fixed missing localization (translations not loading) for users installing the pre-built `.plasmoid` package.
+
 ## [1.0.1] - 2026-03-03
 
 ### Changed
