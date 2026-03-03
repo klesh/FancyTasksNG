@@ -22,6 +22,8 @@ fi
 
 echo "[build] Compiling messages for $projectName"
 
+rm -rf "$DIR/../contents/locale"
+
 catalogs=$(find . -name '*.po' | sort)
 for cat in $catalogs; do
 	echo "$cat"

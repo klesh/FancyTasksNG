@@ -10,7 +10,7 @@ SCRIPT_DIR=$(dirname $(readlink -f "$0"))
 
 # Configuration
 PACKAGE_NAME="FancyTasksNG"
-ICON_NAME="${PACKAGE_NAME}" # Defaults to package name
+ICON_NAME="icon" # Standardized KPackage icon name
 
 BUILD_DIR="$SCRIPT_DIR/build"
 RELEASE_DIR="$SCRIPT_DIR/release"

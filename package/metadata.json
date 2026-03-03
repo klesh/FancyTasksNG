@@ -23,7 +23,7 @@
         "Description": "More modern taskbar-style window switcher displaying icons and text, with some improvments and customization options",
         "Description[ru]": "Многофункциональная настраиваемая панель задач с современным дизайном и приятными анимациями",
         "EnabledByDefault": true,
-        "Icon": "FancyTasksNG.svg",
+        "Icon": "io.github.daydve.fancytasksng",
         "Id": "io.github.daydve.fancytasksng",
         "License": "GPL-2.0+",
         "Name": "Fancy Tasks NG",
