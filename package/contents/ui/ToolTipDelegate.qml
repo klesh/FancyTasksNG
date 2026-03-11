@@ -150,13 +150,12 @@ Loader {
     Component {
         id: singleTooltip
 
-        ColumnLayout {
-            spacing: Kirigami.Units.smallSpacing
-            
-            Layout.margins: toolTipDelegate.showThumbnails ? Kirigami.Units.mediumSpacing : -6
-            
+        Item {
+            implicitWidth: singleLayout.implicitWidth
+            implicitHeight: singleLayout.implicitHeight
+
             property bool isHovered: singleHover.hovered || singleDrop.containsDrag
-            
+
             HoverHandler {
                 id: singleHover
             }
@@ -166,20 +165,25 @@ Loader {
                 anchors.fill: parent
             }
 
-            PlasmaComponents3.Label {
-                Layout.alignment: Qt.AlignHCenter
-                Layout.fillWidth: true
-                Layout.maximumWidth: toolTipDelegate.tooltipInstanceMaximumWidth
-                horizontalAlignment: Text.AlignHCenter
+            ColumnLayout {
+                id: singleLayout
+                anchors.fill: parent
+                spacing: Kirigami.Units.smallSpacing
                 
-                text: toolTipDelegate.calculatedAppName
-                font.bold: true
-                elide: Text.ElideRight
-                // Show if Pinned OR if in Thumbnail Mode.
-                // If Running + TextMode, ToolTipInstance handles the header (with Close Button).
-                visible: text.length > 0 && (!toolTipDelegate.isWin || toolTipDelegate.showThumbnails)
-                opacity: 0.8
-            }
+                PlasmaComponents3.Label {
+                    Layout.alignment: Qt.AlignHCenter
+                    Layout.fillWidth: true
+                    Layout.maximumWidth: toolTipDelegate.tooltipInstanceMaximumWidth
+                    horizontalAlignment: Text.AlignHCenter
+                    
+                    text: toolTipDelegate.calculatedAppName
+                    font.bold: true
+                    elide: Text.ElideRight
+                    // Show if Pinned OR if in Thumbnail Mode.
+                    // If Running + TextMode, ToolTipInstance handles the header (with Close Button).
+                    visible: text.length > 0 && (!toolTipDelegate.isWin || toolTipDelegate.showThumbnails)
+                    opacity: 0.8
+                }
 
             PlasmaComponents3.Label {
                 Layout.alignment: Qt.AlignHCenter
@@ -232,24 +236,17 @@ Loader {
             }
         }
     }
+}
 
     Component {
         id: groupToolTip
 
-        ColumnLayout {
-            spacing: Kirigami.Units.smallSpacing
+        Item {
+            implicitWidth: groupLayout.implicitWidth
+            implicitHeight: groupLayout.implicitHeight
 
             property bool isHovered: groupHover.hovered || groupDrop.containsDrag
             
-            readonly property int safeCount: toolTipDelegate.windows.length > 0 ? toolTipDelegate.windows.length : 1
-            readonly property int maxTooltipWidth: Screen.width - Kirigami.Units.gridUnit * 2
-            readonly property int maxTooltipHeight: Screen.height - Kirigami.Units.gridUnit * 2
-            readonly property real contentTargetWidth: {
-                 // Use same logic as DelegateModel
-                 const count = (!toolTipDelegate.showThumbnails || toolTipDelegate.isVerticalPanel) ? 1 : safeCount;
-                 return Math.ceil(count * toolTipDelegate.tooltipInstanceMaximumWidth + Math.max(0, count - 1) * Kirigami.Units.smallSpacing);
-            }
-
             HoverHandler {
                 id: groupHover
             }
@@ -259,23 +256,37 @@ Loader {
                 anchors.fill: parent
             }
 
-            PlasmaComponents3.Label {
-                Layout.alignment: Qt.AlignHCenter
-                Layout.fillWidth: true
-                Layout.maximumWidth: parent.contentTargetWidth
-                horizontalAlignment: Text.AlignHCenter
+            ColumnLayout {
+                id: groupLayout
+                anchors.fill: parent
+                spacing: Kirigami.Units.smallSpacing
                 
-                text: toolTipDelegate.calculatedAppName
-                font.bold: true
-                elide: Text.ElideRight
-                visible: text.length > 0 && toolTipDelegate.showThumbnails
-                opacity: 0.8
-            }
+                readonly property int safeCount: toolTipDelegate.windows.length > 0 ? toolTipDelegate.windows.length : 1
+                readonly property int maxTooltipWidth: Screen.width - Kirigami.Units.gridUnit * 2
+                readonly property int maxTooltipHeight: Screen.height - Kirigami.Units.gridUnit * 2
+                readonly property real contentTargetWidth: {
+                     // Use same logic as DelegateModel
+                     const count = (!toolTipDelegate.showThumbnails || toolTipDelegate.isVerticalPanel) ? 1 : safeCount;
+                     return Math.ceil(count * toolTipDelegate.tooltipInstanceMaximumWidth + Math.max(0, count - 1) * Kirigami.Units.smallSpacing);
+                }
+
+                PlasmaComponents3.Label {
+                    Layout.alignment: Qt.AlignHCenter
+                    Layout.fillWidth: true
+                    Layout.maximumWidth: groupLayout.contentTargetWidth
+                    horizontalAlignment: Text.AlignHCenter
+                    
+                    text: toolTipDelegate.calculatedAppName
+                    font.bold: true
+                    elide: Text.ElideRight
+                    visible: text.length > 0 && toolTipDelegate.showThumbnails
+                    opacity: 0.8
+                }
 
             PlasmaComponents3.Label {
                 Layout.alignment: Qt.AlignHCenter
                 Layout.fillWidth: true
-                Layout.maximumWidth: parent.contentTargetWidth
+                Layout.maximumWidth: groupLayout.contentTargetWidth
                 horizontalAlignment: Text.AlignHCenter
                 
                 text: toolTipDelegate.generateSubText()
@@ -300,8 +311,8 @@ Loader {
                 background: null
                 
                 // Hide scrollbars unless content strictly exceeds screen limits (prevents resize flickering)
-                ScrollBar.horizontal.policy: (parent.contentTargetWidth > parent.maxTooltipWidth) ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff
-                ScrollBar.vertical.policy: (groupToolTipListView.contentHeight > parent.maxTooltipHeight) ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff
+                ScrollBar.horizontal.policy: (groupLayout.contentTargetWidth > groupLayout.maxTooltipWidth) ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff
+                ScrollBar.vertical.policy: (groupToolTipListView.contentHeight > groupLayout.maxTooltipHeight) ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff
 
                 // Explicitly bind ListView as the scrollable content item for native wheel/touch handling
                 contentItem: groupToolTipListView
@@ -310,18 +321,18 @@ Loader {
                 clip: true
                 
                 // Match content size strictly, but cap at screen limits
-                Layout.preferredWidth: Math.min(parent.contentTargetWidth, parent.maxTooltipWidth)
-                Layout.preferredHeight: Math.min(Math.max(groupToolTipListView.contentHeight, toolTipDelegate.showThumbnails ? delegateModel.estimatedHeight : 0), parent.maxTooltipHeight)
+                Layout.preferredWidth: Math.min(groupLayout.contentTargetWidth, groupLayout.maxTooltipWidth)
+                Layout.preferredHeight: Math.min(Math.max(groupToolTipListView.contentHeight, toolTipDelegate.showThumbnails ? delegateModel.estimatedHeight : 0), groupLayout.maxTooltipHeight)
                 Layout.fillWidth: false 
                 
-                implicitHeight: Math.min(Math.max(groupToolTipListView.contentHeight, toolTipDelegate.showThumbnails ? delegateModel.estimatedHeight : 0), parent.maxTooltipHeight)
-                implicitWidth: Math.min(groupToolTipListView.width, parent.maxTooltipWidth)
+                implicitHeight: Math.min(Math.max(groupToolTipListView.contentHeight, toolTipDelegate.showThumbnails ? delegateModel.estimatedHeight : 0), groupLayout.maxTooltipHeight)
+                implicitWidth: Math.min(groupToolTipListView.width, groupLayout.maxTooltipWidth)
 
                 ListView {
                     id: groupToolTipListView
 
                     // Content Width Logic
-                    width: parent.contentTargetWidth
+                    width: groupLayout.contentTargetWidth
                     // Height is managed by ScrollView (fills viewport)
      
                     model: delegateModel
@@ -395,4 +406,5 @@ Loader {
             }
         }
     }
+}
 }
