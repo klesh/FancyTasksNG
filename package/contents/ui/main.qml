@@ -68,6 +68,7 @@ PlasmoidItem {
     readonly property Component pulseAudioComponent: Qt.createComponent("PulseAudio.qml")
 
     property bool needLayoutRefresh: false
+    property bool windowPositionSortInProgress: false
     property var taskClosedWithMouseMiddleButton: []
     property alias taskList: taskList
     property alias effectWatcher: effectWatcher
@@ -76,6 +77,17 @@ PlasmoidItem {
     property alias dragHelper: dragHelper
     property alias taskFrame: taskFrame
     property alias busyIndicator: busyIndicator
+
+    readonly property QtObject sortingStrategyEnum: QtObject {
+        readonly property int disabled: 0
+        readonly property int manual: 1
+        readonly property int alpha: 2
+        readonly property int virtualDesktop: 3
+        readonly property int activity: 4
+        readonly property int windowPosition: 5
+    }
+
+    readonly property bool windowPositionSortEnabled: Plasmoid.configuration.sortingStrategy === sortingStrategyEnum.windowPosition
 
     preferredRepresentation: fullRepresentation
     Plasmoid.constraintHints: Plasmoid.CanFillArea
@@ -160,6 +172,86 @@ PlasmoidItem {
         }
     }
 
+    function geometryForTask(task): rect {
+        if (!task)
+            return Qt.rect(0, 0, 0, 0);
+
+        const modelIndex = tasksModel.makeModelIndex(task.index);
+        const geometry = tasksModel.data(modelIndex, TaskManager.AbstractTasksModel.Geometry);
+        if (geometry && geometry.width !== undefined && geometry.height !== undefined) {
+            return geometry;
+        }
+
+        const winIds = tasksModel.data(modelIndex, TaskManager.AbstractTasksModel.WinIdList);
+        if (winIds && winIds.length > 0 && backend && typeof backend.globalRect === "function") {
+            // Fallback for tasks where geometry role may be unavailable.
+            return backend.globalRect(task);
+        }
+
+        return Qt.rect(Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER, 0, 0);
+    }
+
+    function resortTasksByWindowPosition(): void {
+        console.log("[FancyTasksNG] resortTasksByWindowPosition called. enabled=" + windowPositionSortEnabled
+            + " inProgress=" + windowPositionSortInProgress
+            + " sortMode=" + tasksModel.sortMode
+            + " count=" + taskRepeater.count);
+        if (!windowPositionSortEnabled || windowPositionSortInProgress)
+            return;
+        if (tasksModel.sortMode !== TaskManager.TasksModel.SortManual)
+            return;
+        if (taskRepeater.count <= 1)
+            return;
+
+        windowPositionSortInProgress = true;
+
+        const items = [];
+        for (let i = 0; i < taskRepeater.count; ++i) {
+            const item = taskRepeater.itemAt(i);
+            if (!item)
+                continue;
+            items.push(item);
+        }
+
+        const sorted = items.slice().sort((a, b) => {
+            const aLauncher = a.model.IsLauncher || a.model.IsStartup;
+            const bLauncher = b.model.IsLauncher || b.model.IsStartup;
+            if (aLauncher !== bLauncher) {
+                return aLauncher ? -1 : 1;
+            }
+            if (aLauncher && bLauncher) {
+                return a.index - b.index;
+            }
+
+            const ga = geometryForTask(a);
+            const gb = geometryForTask(b);
+            console.log("[FancyTasksNG] sort: a.index=" + a.index + " ga=" + JSON.stringify(ga)
+                + " b.index=" + b.index + " gb=" + JSON.stringify(gb));
+
+            if (ga.x !== gb.x)
+                return ga.x - gb.x;
+            if (ga.y !== gb.y)
+                return ga.y - gb.y;
+
+            return a.index - b.index;
+        });
+
+        let changed = false;
+        for (let target = 0; target < sorted.length; ++target) {
+            const item = sorted[target];
+            if (item.index !== target) {
+                tasksModel.move(item.index, target);
+                changed = true;
+            }
+        }
+
+        windowPositionSortInProgress = false;
+
+        if (changed) {
+            iconGeometryTimer.restart();
+        }
+    }
+
     readonly property TaskManager.TasksModel tasksModel: TaskManager.TasksModel {
         id: tasksModel
 
@@ -185,8 +277,8 @@ PlasmoidItem {
         filterNotMinimized: Plasmoid.configuration.showOnlyMinimized
         hideActivatedLaunchers: tasks.iconsOnly || Plasmoid.configuration.hideLauncherOnStart
         sortMode: sortModeEnumValue(Plasmoid.configuration.sortingStrategy)
-        launchInPlace: tasks.iconsOnly && Plasmoid.configuration.sortingStrategy === 1
-        separateLaunchers: !tasks.iconsOnly && !Plasmoid.configuration.separateLaunchers && Plasmoid.configuration.sortingStrategy === 1 ? false : true
+        launchInPlace: tasks.iconsOnly && Plasmoid.configuration.sortingStrategy === tasks.sortingStrategyEnum.manual
+        separateLaunchers: !tasks.iconsOnly && !Plasmoid.configuration.separateLaunchers && Plasmoid.configuration.sortingStrategy === tasks.sortingStrategyEnum.manual ? false : true
         groupMode: groupModeEnumValue(Plasmoid.configuration.groupingStrategy)
         groupInline: !Plasmoid.configuration.groupPopups && !tasks.iconsOnly
         groupingWindowTasksThreshold: (Plasmoid.configuration.onlyGroupWhenFull && !tasks.iconsOnly ? LayoutMetrics.optimumCapacity(tasks.width, tasks.height) + 1 : -1)
@@ -197,16 +289,20 @@ PlasmoidItem {
 
         function sortModeEnumValue(index: int): int {
             switch (index) {
-            case 0:
+            case tasks.sortingStrategyEnum.disabled:
                 return TaskManager.TasksModel.SortDisabled;
-            case 1:
+            case tasks.sortingStrategyEnum.manual:
                 return TaskManager.TasksModel.SortManual;
-            case 2:
+            case tasks.sortingStrategyEnum.alpha:
                 return TaskManager.TasksModel.SortAlpha;
-            case 3:
+            case tasks.sortingStrategyEnum.virtualDesktop:
                 return TaskManager.TasksModel.SortVirtualDesktop;
-            case 4:
+            case tasks.sortingStrategyEnum.activity:
                 return TaskManager.TasksModel.SortActivity;
+            case tasks.sortingStrategyEnum.windowPosition:
+                // Custom sort implemented in QML (resortTasksByWindowPosition).
+                // Must use SortManual so that tasksModel.move() calls are honoured.
+                return TaskManager.TasksModel.SortManual;
             default:
                 return TaskManager.TasksModel.SortDisabled;
             }
@@ -274,6 +370,8 @@ PlasmoidItem {
             if (TaskTools.taskManagerInstanceCount >= 2)
                 return;
             iconGeometryTimer.start();
+            if (tasks.windowPositionSortEnabled)
+                windowPositionSortTimer.restart();
         }
     }
 
@@ -281,6 +379,8 @@ PlasmoidItem {
         target: Plasmoid.containment
         function onScreenGeometryChanged(): void {
             iconGeometryTimer.start();
+            if (tasks.windowPositionSortEnabled)
+                windowPositionSortTimer.restart();
         }
     }
 
@@ -318,6 +418,14 @@ PlasmoidItem {
             repeat: false
             onTriggered: tasks.publishIconGeometries(taskList.children, tasks)
         }
+
+        Timer {
+            id: windowPositionSortTimer
+            interval: 1200
+            repeat: true
+            running: tasks.windowPositionSortEnabled
+            onTriggered: tasks.resortTasksByWindowPosition()
+        }
         Timer {
             id: startupSortFixTimer
             interval: 2000
@@ -347,12 +455,21 @@ PlasmoidItem {
                 var m = taskRepeater.model;
                 taskRepeater.model = null;
                 taskRepeater.model = m;
+
+                if (tasks.windowPositionSortEnabled)
+                    windowPositionSortTimer.restart();
             }
             function onGroupingAppIdBlacklistChanged(): void {
                 tasksModel.groupingAppIdBlacklist = Plasmoid.configuration.groupingAppIdBlacklist;
             }
             function onGroupingLauncherUrlBlacklistChanged(): void {
                 tasksModel.groupingLauncherUrlBlacklist = Plasmoid.configuration.groupingLauncherUrlBlacklist;
+            }
+            function onSortingStrategyChanged(): void {
+                if (tasks.windowPositionSortEnabled) {
+                    tasks.resortTasksByWindowPosition();
+                    windowPositionSortTimer.restart();
+                }
             }
         }
 
@@ -448,6 +565,10 @@ PlasmoidItem {
                     delegate: Task {
                         tasksRoot: tasks
                     }
+                    onItemAdded: (index, item) => {
+                        if (tasks.windowPositionSortEnabled)
+                            windowPositionSortTimer.restart();
+                    }
                     onItemRemoved: (index, item) => {
                         const task = item as Task;
                         if (rootHoverHandler.hovered && index !== taskRepeater.count && 
@@ -456,6 +577,9 @@ PlasmoidItem {
                             tasks.needLayoutRefresh = true;
                         }
                         tasks.taskClosedWithMouseMiddleButton = [];
+
+                        if (tasks.windowPositionSortEnabled)
+                            windowPositionSortTimer.restart();
                     }
                 }
             }
@@ -506,6 +630,8 @@ PlasmoidItem {
     Component.onCompleted: {
         TaskTools.taskManagerInstanceCount += 1;
         requestLayout.connect(iconGeometryTimer.restart);
+        if (windowPositionSortEnabled)
+            resortTasksByWindowPosition();
     }
     Component.onDestruction: TaskTools.taskManagerInstanceCount -= 1
 

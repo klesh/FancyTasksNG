@@ -66,9 +66,17 @@
             >The launcher URLs (usually .desktop file or executable URLs) of applications that should not have their tasks grouped.</label>
       <default />
     </entry>
-    <entry name="sortingStrategy" type="Int">
+    <entry name="sortingStrategy" type="Enum">
       <label
-            >How to sort tasks: 0 = Do Not Sort, 1 = Manually, 2 = Alphabetically, 3 = By Desktop, 4 = By Activity</label>
+            >How to sort tasks.</label>
+      <choices>
+        <choice name="DoNotSort" />
+        <choice name="Manually" />
+        <choice name="Alphabetically" />
+        <choice name="ByDesktop" />
+        <choice name="ByActivity" />
+        <choice name="ByWindowPosition" />
+      </choices>
       <default>1</default>
     </entry>
     <entry name="separateLaunchers" type="Bool">

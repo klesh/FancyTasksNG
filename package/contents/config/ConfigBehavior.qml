@@ -20,8 +20,14 @@ import "../ui/code/singletones"
 ConfigPage {
     id: cfg_page
 
-
-
+    readonly property QtObject sortingStrategyEnum: QtObject {
+        readonly property int disabled: 0
+        readonly property int manual: 1
+        readonly property int alpha: 2
+        readonly property int virtualDesktop: 3
+        readonly property int activity: 4
+        readonly property int windowPosition: 5
+    }
 
     resources: [
         DBus.DBusServiceWatcher {
@@ -122,7 +128,8 @@ ConfigPage {
                 Wrappers.i18n("Manually"),
                 Wrappers.i18n("Alphabetically"),
                 Wrappers.i18n("By desktop"),
-                Wrappers.i18n("By activity")
+                Wrappers.i18n("By activity"),
+                Wrappers.i18n("By window position")
             ]
             currentIndex: cfg_page.cfg_sortingStrategy
             onActivated: (index) => cfg_page.cfg_sortingStrategy = index
@@ -132,7 +139,7 @@ ConfigPage {
             id: separateLaunchers
             visible: (!cfg_page.cfg_iconOnly)
             text: Wrappers.i18n("Keep launchers separate")
-            enabled: sortingStrategy.currentIndex === 1
+            enabled: sortingStrategy.currentIndex === cfg_page.sortingStrategyEnum.manual
             checked: cfg_page.cfg_separateLaunchers
             onToggled: cfg_page.cfg_separateLaunchers = checked
         }
