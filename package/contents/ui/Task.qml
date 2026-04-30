@@ -738,11 +738,12 @@ Item {
             property bool sizeOverride: Plasmoid.configuration.iconSizeOverride
             property int fixedSize: Plasmoid.configuration.iconSizePx
             property real iconScale: Plasmoid.configuration.iconScale / 100
+            property real minimizedScale: (task.model.IsWindow && task.model.IsMinimized === true) ? 0.8 : 1
             property bool scaleFromEdge: Plasmoid.configuration.iconScaleFromEdge
             property int edgeOffset: Plasmoid.configuration.iconEdgeOffset
 
-            readonly property int baseWidth: (sizeOverride ? fixedSize : (parent.width * iconScale))
-            readonly property int baseHeight: (sizeOverride ? fixedSize : (parent.height * iconScale))
+            readonly property int baseWidth: (sizeOverride ? fixedSize : (parent.width * iconScale)) * minimizedScale
+            readonly property int baseHeight: (sizeOverride ? fixedSize : (parent.height * iconScale)) * minimizedScale
             readonly property real edgeMarginH: scaleFromEdge ? edgeOffset : (parent.width - baseWidth) / 2
             readonly property real edgeMarginV: scaleFromEdge ? edgeOffset : (parent.height - baseHeight) / 2
 
